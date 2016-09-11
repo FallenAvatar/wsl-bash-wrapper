@@ -1,5 +1,5 @@
 # BashWrapper
-A Wrapper for Bash through WSL that lets you interact with Bash normally from windows
+A Wrapper for Bash through WSL that lets you call and read output from Bash normally from windows apps/tools
 
 # Limitations
 1. You can not "interact" with the Bash process or any child processes it might spawn. You can ONLY read its **standard** output.
@@ -10,3 +10,4 @@ A Wrapper for Bash through WSL that lets you interact with Bash normally from wi
 1. All arguments passed to the wrapper are forwarded to Bash
 1. Bash is started with a current working directory set to the Unix-style WSL version of the current working directory of the wrapper
   1. For instance, C:\Windows\System32 will be set as /mnt/c/Windows/System32/
+  1. Network paths are **NOT** supported at this time
