@@ -24,9 +24,7 @@ namespace BashWrapper {
 				first = false;
 			}
 
-			var bash_path = @"%windir%\System32\bash.exe";
-
-			p.StartInfo.FileName = Path.GetFullPath( Environment.ExpandEnvironmentVariables( bash_path ) );
+			p.StartInfo.FileName = FindBash();
 			p.StartInfo.Arguments = p_args + " > " + tmp_wsl_path;
 
 			p.StartInfo.WorkingDirectory = ConvertPathToWSL( Directory.GetCurrentDirectory() );
@@ -45,6 +43,22 @@ namespace BashWrapper {
 			File.Delete( tmp_win_path );
 
 			Environment.Exit( ret );
+		}
+
+		static string FindBash() {
+			var path = Path.GetFullPath( Environment.ExpandEnvironmentVariables( @"%windir%\SysWow64\bash.exe" ) );
+			if( File.Exists( path ) )
+				return path;
+
+			path = Path.GetFullPath( Environment.ExpandEnvironmentVariables( @"%windir%\sysnative\bash.exe" ) );
+			if( File.Exists( path ) )
+				return path;
+
+			path = Path.GetFullPath( Environment.ExpandEnvironmentVariables( @"%windir%\System32\bash.exe" ) );
+			if( File.Exists( path ) )
+				return path;
+
+			throw new Exception("Could not find a path to Bash!");
 		}
 
 		static string ConvertPathToWSL( string p ) {
