@@ -32,6 +32,9 @@ namespace BashWrapper {
 
                 p.StartInfo.WorkingDirectory = ConvertPathToWSL(Directory.GetCurrentDirectory());
                 p.StartInfo.LoadUserProfile = true;
+                p.StartInfo.CreateNoWindow = true;
+                p.StartInfo.UseShellExecute = true;
+                p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
                 p.Start();
                 p.WaitForExit();
