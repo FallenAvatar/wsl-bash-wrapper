@@ -5,44 +5,54 @@ using System.IO;
 namespace BashWrapper {
 	class Program {
 		static void Main( string[] args ) {
-			var tmp_win_path = Path.GetTempFileName();
-			var tmp_wsl_path = ConvertPathToWSL( tmp_win_path );
+            try
+            {
+                var tmp_win_path = Path.GetTempFileName();
+                var tmp_wsl_path = ConvertPathToWSL(tmp_win_path);
 
-			var p = new Process();
+                var p = new Process();
 
-			var p_args = "";
-			bool first = true;
-			foreach( var t in args ) {
-				var a = t;
-				if( !first )
-					p_args += " ";
+                var p_args = "";
+                bool first = true;
+                foreach (var t in args)
+                {
+                    var a = t;
+                    if (!first)
+                        p_args += " ";
 
-				if( a.Contains( " " ) )
-					a = "\"" + a + "\"";
+                    if (a.Contains(" "))
+                        a = "\"" + a + "\"";
 
-				p_args += a;
-				first = false;
-			}
+                    p_args += a;
+                    first = false;
+                }
 
-			p.StartInfo.FileName = FindBash();
-			p.StartInfo.Arguments = p_args + " > " + tmp_wsl_path;
+                p.StartInfo.FileName = FindBash();
+                p.StartInfo.Arguments = p_args + " > " + tmp_wsl_path;
 
-			p.StartInfo.WorkingDirectory = ConvertPathToWSL( Directory.GetCurrentDirectory() );
-			p.StartInfo.LoadUserProfile = true;
+                p.StartInfo.WorkingDirectory = ConvertPathToWSL(Directory.GetCurrentDirectory());
+                p.StartInfo.LoadUserProfile = true;
 
-			p.Start();
-			p.WaitForExit();
+                p.Start();
+                p.WaitForExit();
 
-			var ret = p.ExitCode;
-			var sr = new StreamReader( tmp_win_path );
+                var ret = p.ExitCode;
+                var sr = new StreamReader(tmp_win_path);
 
-			while( !sr.EndOfStream )
-				Console.WriteLine( sr.ReadLine() );
+                while (!sr.EndOfStream)
+                    Console.WriteLine(sr.ReadLine());
 
-			sr.Close();
-			File.Delete( tmp_win_path );
+                sr.Close();
+                File.Delete(tmp_win_path);
 
-			Environment.Exit( ret );
+                Console.WriteLine($"Return code from cash: {ret}.");
+
+                Environment.Exit(ret);
+            } catch (Exception e)
+            {
+                Console.WriteLine($"Failed to run bash with error code: {e.Message}");
+                throw;
+            }
 		}
 
 		static string FindBash() {
