@@ -45,7 +45,7 @@ namespace BashWrapper {
                 sr.Close();
                 File.Delete(tmp_win_path);
 
-                Console.WriteLine($"Return code from cash: {ret}.");
+                Console.WriteLine($"Return code from bash: {ret}.");
 
                 Environment.Exit(ret);
             } catch (Exception e)
