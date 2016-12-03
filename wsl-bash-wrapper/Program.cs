@@ -28,7 +28,7 @@ namespace BashWrapper {
                 }
 
                 p.StartInfo.FileName = FindBash();
-                p.StartInfo.Arguments = p_args + " > " + tmp_wsl_path;
+                p.StartInfo.Arguments = p_args + " &> " + tmp_wsl_path;
 
                 p.StartInfo.WorkingDirectory = ConvertPathToWSL(Directory.GetCurrentDirectory());
                 p.StartInfo.LoadUserProfile = true;
