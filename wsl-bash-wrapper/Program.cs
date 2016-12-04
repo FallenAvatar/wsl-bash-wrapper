@@ -1,13 +1,74 @@
-﻿using System;
+﻿using Polly;
+using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 
 namespace BashWrapper {
+    // Run the arguments against bash.
 	class Program {
 		static void Main( string[] args ) {
+
+            var tmp_win_path = Path.GetTempFileName();
             try
             {
-                var tmp_win_path = Path.GetTempFileName();
+                // Run bash and cache the error code
+                Process p = RunBashAndSaveOutput(args, tmp_win_path);
+                var ret = p.ExitCode;
+
+                // Unfortunately, under some conditions it seems like the file is locked even after the
+                // process exits.
+                Policy
+                    .Handle<IOException>()
+                    .WaitAndRetry(new[]
+                    {
+                        TimeSpan.FromSeconds(1),
+                        TimeSpan.FromSeconds(1),
+                        TimeSpan.FromSeconds(1),
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(10),
+                        TimeSpan.FromSeconds(10),
+                        TimeSpan.FromSeconds(10),
+                    })
+                    .Execute(() => CopyFileToStdout(tmp_win_path));
+
+                // Report back what we saw happen with the process.
+                Environment.Exit(ret);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Failed while trying to run and read back log file: {e.Message}");
+                throw;
+            }
+            finally
+            {
+                // Always clean up after ourselves if possible
+                if (File.Exists(tmp_win_path))
+                {
+                    File.Delete(tmp_win_path);
+                }
+            }
+		}
+
+        /// <summary>
+        /// Copy the data from the temp file to the output file.
+        /// </summary>
+        /// <param name="tmp_win_path"></param>
+        private static void CopyFileToStdout(string tmp_win_path)
+        {
+            var sr = new StreamReader(tmp_win_path);
+
+            while (!sr.EndOfStream)
+                Console.WriteLine(sr.ReadLine());
+            sr.Close();
+        }
+
+        private static Process RunBashAndSaveOutput(string[] args, string tmp_win_path)
+        {
+            try
+            {
                 var tmp_wsl_path = ConvertPathToWSL(tmp_win_path);
 
                 var p = new Process();
@@ -38,27 +99,16 @@ namespace BashWrapper {
 
                 p.Start();
                 p.WaitForExit();
-
-                var ret = p.ExitCode;
-                var sr = new StreamReader(tmp_win_path);
-
-                while (!sr.EndOfStream)
-                    Console.WriteLine(sr.ReadLine());
-
-                sr.Close();
-                File.Delete(tmp_win_path);
-
-                Console.WriteLine($"Return code from bash: {ret}.");
-
-                Environment.Exit(ret);
+                return p;
             } catch (Exception e)
             {
-                Console.WriteLine($"Failed to run bash with error code: {e.Message}");
-                throw;
+                var sb = new StringBuilder();
+                foreach(var a in args) { sb.Append($"a "); }
+                throw new InvalidOperationException($"Unable to run bash with arguments {sb.ToString()}.", e);
             }
-		}
+        }
 
-		static string FindBash() {
+        static string FindBash() {
 			var path = Path.GetFullPath( Environment.ExpandEnvironmentVariables( @"%windir%\SysWow64\bash.exe" ) );
 			if( File.Exists( path ) )
 				return path;

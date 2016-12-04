@@ -11,3 +11,4 @@ build/
 [Oo]bj/
 
 *.suo
+/packages/
