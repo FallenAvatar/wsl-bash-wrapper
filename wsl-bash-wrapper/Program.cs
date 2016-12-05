@@ -1,15 +1,14 @@
-﻿using Polly;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace BashWrapper {
+namespace BashWrapper
+{
     // Run the arguments against bash.
-	class Program {
+    class Program {
 		static void Main( string[] bash_args ) {
 
             // Determine if --verbose was used as the first argument.
