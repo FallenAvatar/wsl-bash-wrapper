@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BashWrapper {
     // Run the arguments against bash.
@@ -22,28 +24,37 @@ namespace BashWrapper {
             try
             {
                 // Run bash and cache the error code
-                Process p = RunBashAndSaveOutput(bash_args, tmp_win_path, verbose);
-                var ret = p.ExitCode;
+                Process p = StartBashAndSaveOutput(bash_args, tmp_win_path, verbose);
+
+                ContinuousCopyFileToStdout(tmp_win_path, () => p.HasExited).Wait();
+
+                //p.WaitForExit();
+                //if (verbose)
+                //{
+                //    Console.WriteLine($"BashWrapper: bash process exit code: {p.ExitCode}");
+                //    Console.WriteLine($"BashWrapper: bash CPU time {p.TotalProcessorTime} and wall clock time {p.ExitTime - p.StartTime}");
+                //}
 
                 // Unfortunately, under some conditions it seems like the file is locked even after the
                 // process exits.
-                Policy
-                    .Handle<IOException>()
-                    .WaitAndRetry(new[]
-                    {
-                        TimeSpan.FromSeconds(1),
-                        TimeSpan.FromSeconds(1),
-                        TimeSpan.FromSeconds(1),
-                        TimeSpan.FromSeconds(5),
-                        TimeSpan.FromSeconds(5),
-                        TimeSpan.FromSeconds(5),
-                        TimeSpan.FromSeconds(10),
-                        TimeSpan.FromSeconds(10),
-                        TimeSpan.FromSeconds(10),
-                    })
-                    .Execute(() => CopyFileToStdout(tmp_win_path));
+                //Policy
+                //    .Handle<IOException>()
+                //    .WaitAndRetry(new[]
+                //    {
+                //        TimeSpan.FromSeconds(1),
+                //        TimeSpan.FromSeconds(1),
+                //        TimeSpan.FromSeconds(1),
+                //        TimeSpan.FromSeconds(5),
+                //        TimeSpan.FromSeconds(5),
+                //        TimeSpan.FromSeconds(5),
+                //        TimeSpan.FromSeconds(10),
+                //        TimeSpan.FromSeconds(10),
+                //        TimeSpan.FromSeconds(10),
+                //    })
+                //    .Execute(() => CopyFileToStdout(tmp_win_path));
 
                 // Report back what we saw happen with the process.
+                var ret = p.ExitCode;
                 Environment.Exit(ret);
             }
             finally
@@ -69,7 +80,58 @@ namespace BashWrapper {
             sr.Close();
         }
 
-        private static Process RunBashAndSaveOutput(string[] args, string tmp_win_path, bool verbose)
+        /// <summary>
+        /// This method will repeatedly query a file to see if it has gotten longer. When it has, it will dump anything new
+        /// to the screen. It will also quick checking once the query function handed to it returns true. At that point
+        /// it will make sure it has dumped everything in the file out.
+        /// </summary>
+        /// <param name="tmp_win_path"></param>
+        private static async Task ContinuousCopyFileToStdout(string tmp_win_path, Func<bool> stopCheckingFile)
+        {
+            long lastlength = 0;
+            long lastRenderedData = 0;
+            var f = new FileInfo(tmp_win_path);
+
+            // Loop till we are done, checking
+            while (!stopCheckingFile())
+            {
+                f.Refresh();
+                if (f.Length != lastlength)
+                {
+                    // File updated. Open it, move to the proper positions, and dump everything we can.
+                    lastlength = f.Length;
+                    lastRenderedData = await DumpFile(lastRenderedData, f);
+                }
+                await Task.Delay(100);
+            }
+
+            // Done. Make sure nothing is left behind.
+            await DumpFile(lastRenderedData, f);
+        }
+
+        /// <summary>
+        /// Dump the contents of a file to a stream starting from the location given.
+        /// </summary>
+        /// <param name="lastRenderedData"></param>
+        /// <param name="f"></param>
+        /// <returns></returns>
+        private static async Task<long> DumpFile(long lastRenderedPosition, FileInfo file)
+        {
+            // Use open/read/readwrite to make sure that we don't get in the way of anyone
+            // else that is accessing the file (e.g. bash).
+            using (var fs = new FileStream(file.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            {
+                using (var sr = new StreamReader(fs))
+                {
+                    fs.Seek(lastRenderedPosition, SeekOrigin.Begin);
+                    while (!sr.EndOfStream)
+                        Console.WriteLine(await sr.ReadLineAsync());
+                    return fs.Position;
+                }
+            }
+        }
+
+        private static Process StartBashAndSaveOutput(string[] args, string tmp_win_path, bool verbose)
         {
             try
             {
@@ -110,12 +172,6 @@ namespace BashWrapper {
                 p.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
 
                 p.Start();
-                p.WaitForExit();
-                if (verbose)
-                {
-                    Console.WriteLine($"BashWrapper: bash process exit code: {p.ExitCode}");
-                    Console.WriteLine($"BashWrapper: bash CPU time {p.TotalProcessorTime} and wall clock time {p.ExitTime - p.StartTime}");
-                }
                 return p;
             } catch (Exception e)
             {
