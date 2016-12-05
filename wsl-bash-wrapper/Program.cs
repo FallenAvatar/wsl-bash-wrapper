@@ -28,33 +28,11 @@ namespace BashWrapper {
 
                 ContinuousCopyFileToStdout(tmp_win_path, () => p.HasExited).Wait();
 
-                //p.WaitForExit();
-                //if (verbose)
-                //{
-                //    Console.WriteLine($"BashWrapper: bash process exit code: {p.ExitCode}");
-                //    Console.WriteLine($"BashWrapper: bash CPU time {p.TotalProcessorTime} and wall clock time {p.ExitTime - p.StartTime}");
-                //}
-
-                // Unfortunately, under some conditions it seems like the file is locked even after the
-                // process exits.
-                //Policy
-                //    .Handle<IOException>()
-                //    .WaitAndRetry(new[]
-                //    {
-                //        TimeSpan.FromSeconds(1),
-                //        TimeSpan.FromSeconds(1),
-                //        TimeSpan.FromSeconds(1),
-                //        TimeSpan.FromSeconds(5),
-                //        TimeSpan.FromSeconds(5),
-                //        TimeSpan.FromSeconds(5),
-                //        TimeSpan.FromSeconds(10),
-                //        TimeSpan.FromSeconds(10),
-                //        TimeSpan.FromSeconds(10),
-                //    })
-                //    .Execute(() => CopyFileToStdout(tmp_win_path));
-
-                // Report back what we saw happen with the process.
                 var ret = p.ExitCode;
+                if (verbose)
+                {
+                    Console.WriteLine($"BashWrapper: Process exit code {ret}");
+                }
                 Environment.Exit(ret);
             }
             finally
