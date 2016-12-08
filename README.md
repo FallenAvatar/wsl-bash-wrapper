@@ -9,8 +9,8 @@ To run a command you place BashWrapper.exe in your PATH. Then:
 
 will run bash and pass the options "-c ls" to it. You will get the current local directory's contents.
 
-Command Line Options:
-  --verbose     Print out some debug infomration, inlcuding process exit code. Must be first argument after BashWrapper.
+## Command Line Options:
+*  --verbose     Print out some debug infomration, inlcuding process exit code. Must be first argument after BashWrapper.
 
 # Limitations
 1. You can not "interact" with the Bash process or any child processes it might spawn. You can ONLY read its **standard** error and output.
